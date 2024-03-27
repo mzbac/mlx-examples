@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Dict
@@ -70,21 +71,27 @@ def linear_to_lora_layers(
         l.update_modules(tree_unflatten(lora_layers))
 
 
-def apply_lora_layers(model: nn.Module, adapter_file: str) -> nn.Module:
+def apply_lora_layers(model: nn.Module, adapter_path: str) -> nn.Module:
     """
     Apply LoRA layers to the model.
 
     Args:
         model (nn.Module): The neural network model.
-        adapter_file (str): Path to the adapter configuration file.
+        adapter_path (str): Path to the adapter configuration file.
 
     Returns:
         nn.Module: The updated model with LoRA layers applied.
     """
-    if not os.path.exists(adapter_file):
-        raise FileNotFoundError(f"The adapter file does not exist: {adapter_file}")
+    if not os.path.exists(adapter_path):
+        raise FileNotFoundError(f"The adapter file does not exist: {adapter_path}")
 
+    adapter_file = get_adapter_file(adapter_path)
     adapters = list(mx.load(adapter_file).items())
+    adapter_config = Path(adapter_path) / "adapter_config.json"
+    config = {}
+    if adapter_config.exists():
+        with open(adapter_config, "r") as f:
+            config = json.load(f)
 
     linear_replacements = []
     lora_layers = set(
@@ -92,7 +99,7 @@ def apply_lora_layers(model: nn.Module, adapter_file: str) -> nn.Module:
     )
     for name, module in model.named_modules():
         if name in lora_layers:
-            replacement_module = LoRALinear.from_linear(module)
+            replacement_module = LoRALinear.from_linear(module, **config)
             linear_replacements.append((name, replacement_module))
 
     model.update_modules(tree_unflatten(linear_replacements))
