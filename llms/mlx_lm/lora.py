@@ -15,7 +15,7 @@ from mlx.utils import tree_flatten
 
 from .tuner.datasets import load_dataset
 from .tuner.trainer import TrainingArgs, TrainingCallback, evaluate, train
-from .tuner.utils import linear_to_lora_layers
+from .tuner.utils import get_adapter_file, linear_to_lora_layers
 from .utils import load
 
 yaml_loader = yaml.SafeLoader
@@ -99,7 +99,7 @@ def build_parser():
         help="Number of training steps between validations.",
     )
     parser.add_argument(
-        "--resume-adapter-file",
+        "--resume-adapter-path",
         type=str,
         help="Load path to resume training with the given adapter weights.",
     )
@@ -179,10 +179,10 @@ def run(args, training_callback: TrainingCallback = None):
     train_set, valid_set, test_set = load_dataset(args, tokenizer)
 
     # Resume training the given adapters.
-    # TODO resume adapter from folder
-    if args.resume_adapter_file is not None:
-        print(f"Loading pretrained adapters from {args.resume_adapter_file}")
-        model.load_weights(args.resume_adapter_file, strict=False)
+    if args.resume_adapter_path is not None:
+        adapter_file = get_adapter_file(args.resume_adapter_path)
+        print(f"Loading pretrained adapters from {adapter_file}")
+        model.load_weights(str(adapter_file), strict=False)
 
     if args.train:
         print("Training")
@@ -213,13 +213,9 @@ def run(args, training_callback: TrainingCallback = None):
         )
 
     # Load the LoRA adapter weights which we assume should exist by this point
-    # TODO update to use adapter_path
-    if not Path(args.adapter_file).is_file():
-        raise ValueError(
-            f"Adapter file {args.adapter_file} missing. "
-            "Use --train to learn and save the adapters.npz."
-        )
-    model.load_weights(args.adapter_file, strict=False)
+    adapter_file = get_adapter_file(args.adapter_path)
+    print(f"Loading pretrained adapters from {adapter_file}")
+    model.load_weights(str(adapter_file), strict=False)
 
     if args.test:
         print("Testing")

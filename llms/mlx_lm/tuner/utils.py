@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Dict
 
 import mlx.core as mx
@@ -151,3 +152,27 @@ def remove_lora_layers(model: nn.Module) -> nn.Module:
     if len(reset_layers) > 0:
         model.update_modules(tree_unflatten(reset_layers))
     return model
+
+
+def get_adapter_file(adapter_path: str) -> str:
+    """
+    Get the adapter file found in the given adapter path.
+
+    Args:
+        adapter_path (str): The path to the directory containing the adapter files.
+
+    Returns:
+        str: The path to the first adapter file found.
+
+    Raises:
+        ValueError: If no adapter files are found in the given path.
+    """
+    adapter_files = list(Path(adapter_path).glob("*.npz")) + list(
+        Path(adapter_path).glob("*.safetensors")
+    )
+    if not adapter_files:
+        raise ValueError(
+            f"No adapter files found in {adapter_path}. " "Please provide a valid path."
+        )
+    adapter_file = adapter_files[0]
+    return str(adapter_file)

@@ -1,14 +1,16 @@
 # Copyright © 2024 Apple Inc.
 
+import json
 import time
 from dataclasses import dataclass, field
-from functools import partial
 from pathlib import Path
 
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 from mlx.utils import tree_flatten
+
+from .lora import LoRALinear
 
 
 def grad_checkpoint(layer):
@@ -306,6 +308,18 @@ def save_adapter(
 ):
     adapter_path = Path(adapter_path)
     adapter_path.mkdir(parents=True, exist_ok=True)
+
     flattened_tree = tree_flatten(model.trainable_parameters())
+
     adapter_file = adapter_path / "adapter.npz"
     mx.savez(adapter_file, **dict(flattened_tree))
+
+    lora_config = {}
+    for _, module in model.named_modules():
+        if isinstance(module, LoRALinear):
+            lora_config = module.lora_config
+            break
+
+    adapter_config_file = adapter_path / "adapter_config.json"
+    with open(adapter_config_file, "w") as f:
+        json.dump(lora_config, f)
