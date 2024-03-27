@@ -48,7 +48,7 @@ CONFIG_DEFAULTS = {
     "steps_per_report": 10,
     "steps_per_eval": 200,
     "resume_adapter_file": None,
-    "adapter_file": "adapters.npz",
+    "adapter_path": "adapter",
     "save_every": 100,
     "test": False,
     "test_batches": 500,
@@ -104,7 +104,7 @@ def build_parser():
         help="Load path to resume training with the given adapter weights.",
     )
     parser.add_argument(
-        "--adapter-file",
+        "--adapter-path",
         type=str,
         help="Save/load path for the trained adapter weights.",
     )
@@ -179,6 +179,7 @@ def run(args, training_callback: TrainingCallback = None):
     train_set, valid_set, test_set = load_dataset(args, tokenizer)
 
     # Resume training the given adapters.
+    # TODO resume adapter from folder
     if args.resume_adapter_file is not None:
         print(f"Loading pretrained adapters from {args.resume_adapter_file}")
         model.load_weights(args.resume_adapter_file, strict=False)
@@ -193,7 +194,7 @@ def run(args, training_callback: TrainingCallback = None):
             steps_per_report=args.steps_per_report,
             steps_per_eval=args.steps_per_eval,
             steps_per_save=args.save_every,
-            adapter_file=args.adapter_file,
+            adapter_path=args.adapter_path,
             max_seq_length=args.max_seq_length,
             grad_checkpoint=args.grad_checkpoint,
         )
@@ -212,6 +213,7 @@ def run(args, training_callback: TrainingCallback = None):
         )
 
     # Load the LoRA adapter weights which we assume should exist by this point
+    # TODO update to use adapter_path
     if not Path(args.adapter_file).is_file():
         raise ValueError(
             f"Adapter file {args.adapter_file} missing. "

@@ -53,8 +53,8 @@ class TrainingArgs:
     max_seq_length: int = field(
         default=2048, metadata={"help": "Maximum sequence length."}
     )
-    adapter_file: str = field(
-        default="adapter.npz",
+    adapter_path: str = field(
+        default="adapter",
         metadata={"help": "Save/load path for the trained adapter weights."},
     )
     grad_checkpoint: bool = field(
@@ -172,17 +172,17 @@ def train(
 ):
     print(f"Starting training..., iters: {args.iters}")
 
-    def checkpoints_path(adapter_file) -> str:
+    def checkpoints_path(adapter_path) -> str:
         checkpoints_path = Path("checkpoints")
-        if Path(adapter_file).parent:
-            checkpoints_path = Path(adapter_file).parent / "checkpoints"
+        if Path(adapter_path).parent:
+            checkpoints_path = Path(adapter_path).parent / "checkpoints"
 
         checkpoints_path.mkdir(parents=True, exist_ok=True)
 
         return str(checkpoints_path)
 
     # Create checkpoints directory if it does not exist
-    adapter_path = checkpoints_path(args.adapter_file)
+    adapter_path = checkpoints_path(args.adapter_path)
 
     if args.grad_checkpoint:
         grad_checkpoint(model.layers[0])
@@ -289,21 +289,23 @@ def train(
 
         # Save adapter weights if needed
         if (it + 1) % args.steps_per_save == 0:
-            checkpoint_adapter_file = (
-                f"{adapter_path}/{it + 1}_{Path(args.adapter_file).name}"
+            checkpoint_adapter_path = (
+                f"{adapter_path}/{it + 1}_{Path(args.adapter_path).name}"
             )
-            save_adapter(model=model, adapter_file=checkpoint_adapter_file)
-            print(f"Iter {it + 1}: Saved adapter weights to {checkpoint_adapter_file}.")
+            save_adapter(model=model, adapter_path=checkpoint_adapter_path)
+            print(f"Iter {it + 1}: Saved adapter weights to {checkpoint_adapter_path}.")
 
     # save final adapter weights
-    save_adapter(model=model, adapter_file=args.adapter_file)
-    print(f"Saved final adapter weights to {args.adapter_file}.")
+    save_adapter(model=model, adapter_path=args.adapter_path)
+    print(f"Saved final adapter weights to {args.adapter_path}.")
 
 
 def save_adapter(
     model: nn.Module,
-    adapter_file: str,
+    adapter_path: str,
 ):
+    adapter_path = Path(adapter_path)
+    adapter_path.mkdir(parents=True, exist_ok=True)
     flattened_tree = tree_flatten(model.trainable_parameters())
-
+    adapter_file = adapter_path / "adapter.npz"
     mx.savez(adapter_file, **dict(flattened_tree))
